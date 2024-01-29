@@ -1,0 +1,287 @@
+---
+title: "NFL Attendance Statistics"
+author: "Musaab Bargicho, Rohit Singh, Bryan Li, Fahad Abdullahi "
+date: "11/7/2023"
+output: 
+  html_document:
+    df_print: paged
+---
+
+## Introduction
+
+The NFL is a fast-growing sport, and understanding the factors influencing attendance at home games is vital for teams looking to increase revenue and add more fans. So today, we will be analyzing how the outcomes of games in the NFL and team standings affect attendance at home games. We plan to look at the 2 data sets, which are attendance and standings data sets, to find out how each team's standings and performance during the season affect attendance at home games. First, we will clean out the data sets, such as handling the missing data and outliers. Then, we will join the data sets together to analyze it.
+
+This will help the NFL teams because our analysis will show teams what will increase their attendance rates, which will help increase their revenue. Overall, this will help the NFL create a better experience for fans. Also, knowing this information is vital for the NFL teams, our data may provide information on how they might need to prepare for bigger crowds during winning seasons. They may need to hire more security, add more vendors, more seats, and more.
+
+## Packages
+
+```{r, message=FALSE}
+
+## **Packages Required**
+library(tidyverse) ## Easy was to install packages needed
+library(ggplot2) ## Create visualizations
+library(dplyr) ## Manipulate data
+library (magrittr) ## pipe operators
+library(gtsummary) ## descriptive statistics and summary tables
+```
+
+## Data Preperation
+
+```{r, message=FALSE}
+# Read the data from CSV files
+setwd("/Users/mussab/Desktop/Data Managment Class/Week_5/nfl")
+standings_df <- read_csv("standings.csv")
+games_df <- read_csv("games.csv")
+attendance_df <- read_csv("attendance.csv")
+```
+
+# Initial Data
+
+This code will provide you with an overview of each data set, including the number of variables and peculiarities related to missing values. The str function shows the data structure, and the summary function provides summary statistics for the variables, which can help you identify missing values and other characteristics of the data.
+
+Each package below contains a unique data set from NFL Attendance Data. The `attendance.csv` data set displays weekly attendance numbers for each team's city throughout the 17-week NFL season, including both home and away attendance. In the `weekly_attendance` column, `NA` is recorded for certain weeks when there is a bye week, indicating that the team did not have a game during that week.
+
+The `games.csv` data set displays the points scored by the winning team and the points scored by the losing team, the amount of points scored for each team, and total yards each team has gained. We have decided not to use the `games.csv` data set for this analysis, as it records individual game details, and the information it provides is similar to that found in the `standings.csv` file. Using the standings.csv file allows us to analyze the season-long team performance instead game by game.
+
+Similar to `attendance.csv`, the `NA` in the column for means that no game was played that week.
+
+The `standings.csv` file shows the number of wins and losses for each NFL team, including the margin of victory, points differential, and whether or not the team has made the playoffs.
+
+The purpose of each package is to research and provide insights into attendance patterns and whether the outcome of a team's standings affects home game attendance
+
+### Cleaning Data
+
+``` {r, message = FALSE}
+# Standings Data
+standings_df %>% select(!c(team_name,team))%>% tbl_summary() # Descriptive data and summary and tells me the amount of observations
+ ncol(standings_df) 
+
+# For attendance_df
+ncol(attendance_df) # shows me the amount of variables
+# Attendance Data
+attendance_df %>% select(!c(team_name))%>% tbl_summary() # Descriptive data and summary and tells me the amount of observations
+
+```
+
+In the standings dataset we have 638 observations and we have 15 variables. In the attendance dataset has 10,846 observations and has 8 variables.
+
+As you can see in the attendance data set, they are teams with fewer observations than others. This happened because some teams may have started after 2000, like the Houston Texan did. Also, some teams had relocated, like the San Diego Chargers becoming the Los Angles Chargers and the St. Louis Rams becoming the Los Angeles Rams.
+
+
+
+```{r, message=FALSE,results='hide'}
+
+colSums(is.na(attendance_df))
+## combining team and team_name variables
+attendance_df <- attendance_df %>% 
+  mutate(team_name = paste(team, team_name, sep = " ")) %>%
+  select(-team)
+
+# Remove duplicate rows
+attendance_df <- attendance_df %>%
+  group_by(team_name, year,total,home,away) %>%
+  mutate(weekly_attendance = mean(weekly_attendance, na.rm = TRUE)) %>%
+  select(-week) %>%
+ distinct(weekly_attendance)
+
+## combining team and team_name variables
+standings_df <- standings_df %>% 
+  mutate(team_name = paste(team, team_name, sep = " ")) %>%
+  select(-team)
+
+
+# Remove duplicate rows
+distinct(attendance_df)
+
+# Example: Remove rows with missing values
+standings_df <- standings_df %>% na.omit()
+
+```
+
+In the initial dataset, the only missing value was in the `weekly attendance` column, which is expected since it tells us that there was no game played during that specific week.
+
+We decided to change the dataset. Instead of representing the weekly attendance rate for every week, we made the data reflect the average weekly attendance per year. This change allows analysis of attendance trends over time and provides us with a more manageable dataset.
+
+There was no missing value in the initial dataset. We combined the `team` and `team name` columns because we wanted to remove redundancy in the dataset.
+
+```{r, message=FALSE}
+# checking missing values
+colSums(is.na(standings_df))
+ 
+
+
+```
+
+```{r, message=TRUE}
+# merging data 
+merged_data<- standings_df %>% inner_join(attendance_df, by = c("team_name", "year"))
+
+```
+
+We decided to merge the standings and attendance data sets together.
+
+## Clean Dataset (First 10 Rows)
+
+```{r}
+head(standings_df, 10)
+head(attendance_df, 10)
+```
+
+## Summary About Variables
+
+```{r}
+summary(standings_df[c( "wins", "loss", "points_for", "points_against", "margin_of_victory", "playoffs", "offensive_ranking")])
+
+
+```
+
+The standings dataset provides information on each team's yearly performance. It includes essential data points such as the number of `wins and losses`, which are key indicators of team success. The dataset offers other important statistics like `offensive ratings`, indicating the quality of a team's offensive performance. The dataset contains information on if a team made the `playoffs`. It also provides the `margin of victory` for each team in a given year, which shows us how dominant the team was. All these statistics displays the teams overall performance.
+
+```{r}
+summary(standings_df[c( "wins", "loss", "points_for", "points_against", "margin_of_victory", "playoffs", "offensive_ranking")])
+
+summary(attendance_df[c("total", "home", "away", "weekly_attendance")])
+
+```
+
+The attendance data set contains information about the attendance at NFL games. It provides information on average `weekly attendance` for each team and the total number of fans who attended their home games.
+
+Both of these data sets span from the years of 2000-2019.
+## How We Plan To Analyze Our Data
+
+We think data visualization would be best choice to present the question,It could be bar charts, box plot even histogram. We plan on to combine separate data frames to compare and analyze our data. For example we plan to merge the standings and attendance data frames to analyze how a team's performance in the standings correlates with attendance rates. This will allow us to explore how offensive performance and margin of victory impact attendance rates. We plan on analyzing by each team and seeing how attendance rates my change over specific variables and change over time. 
+
+We plan on using histogram,bar chart, and scatter plots as a way to illustrate the our question. This will helps us find good trends and correlation between variables. 
+
+## Data Visulazations
+All of these vizulaztions uses data from the years of 2000-2019
+
+```{r Figure 1, message=FALSE}
+
+average_attendance <- merged_data %>%
+  group_by(wins,playoffs) %>%
+  summarise(average_home_attendance = mean(home))
+
+ggplot(average_attendance, aes(x = wins, y = average_home_attendance, col = playoffs)) +
+  geom_point() +
+  labs(title = " Figure 1: Relationship between Wins and Attendance",
+       x = "Wins",
+       y = "Total Home Attendace") 
+
+```
+
+Looking at this scatter plot, we can see an increase in attendance rates with NFL teams with more wins. One outlier in the bunch is the 0-win team, which rarely happens in the NFL. This data provided that the more a team wins, the slight increase in attendance will occur.
+
+Furthermore, we decided to dive deeper and analyze how the team's performance may affect the attendance rates.
+
+
+```{r Figure 2}
+
+ggplot(merged_data, aes(x = wins, y = weekly_attendance, color = playoffs)) +
+  geom_boxplot() +
+  labs(title = "Figure 2 : Relationship between Home Wins and Weekly Attendance",
+       x = " Wins",
+       y = "Number of Home Attendance")+
+ scale_y_continuous(breaks = seq(0, 90000, by = 5000),  # Specify breaks a intervals by 50000                    
+  labels = scales::comma_format(scale = 1))   # Format labels with commas
+
+
+```
+
+Looking at the box plot, the graph above illustrates the relationship between weekly home attendance and the number of wins. What I leaned from this graph is that the attendance at home games has decreased, likely influenced by the number of games lost
+
+Furthermore, we decided to dive deeper and analyze how the team's performance may affect the attendance rates.
+
+```{r Figure 3}
+
+average_attendance2 <- merged_data %>%
+  group_by(playoffs) %>%
+  summarise(average_home_attendance = mean(home))
+
+ggplot(average_attendance2, aes(x = playoffs , y = average_home_attendance,fill = playoffs )) +
+  geom_bar(stat = "identity", na.rm = TRUE) +
+  geom_text( aes(label = round(average_home_attendance,1)),  
+             vjust = -0.4, hjust = .5) +  # Adjust position of the text labels 
+  labs(title = "Figure 3: How Making The Playffs Effect Home Game Attendace",
+       x = "Playoffs",
+       y = "Average Home Attendance") +
+  scale_y_continuous(breaks = seq(0, 600000, by = 50000),  # Specify breaks a intervals by 50000                    
+  labels = scales::comma_format(scale = 1))   # Format labels with commas
+
+
+
+
+```
+
+I decided to see how going to the playoffs and not going to the playoffs may affect attendance rates at home. As you can see, attending the playoffs slightly increased the attendance rates. There isn't a big enough difference to make a definitive conclusion. We decided to see how the game's performance may affect attendance rates.
+
+We decided to see how offensive efficiency may affect attendance rates, as people love watching high-scoring games these days.
+
+```{r Figure 4}
+
+average_attendance2 <- merged_data %>%
+  group_by(offensive_ranking) %>%
+  summarise(average_home_attendance = mean(home))
+
+ggplot(average_attendance2, aes(x = offensive_ranking , y = average_home_attendance)) +
+  geom_bar(stat = "identity") +
+  scale_x_continuous("Offensive Ranking") +
+  scale_y_continuous("Home game attendacne average", labels = scales::comma_format()) +
+  ggtitle("Figure 4: How Offensive Ranking Effects Home Attendance")
+
+```
+
+While looking at this graph, I learned that offensive ranking didnt affect the home attendance. So, I decided to graph a bar chart of the team with the highest attendance rates from 2000-2019 to see who was at the top.
+
+```{r figure 5}
+
+### Comparing of points for and weekly attendance number 
+ggplot(merged_data, aes(x = points_for, y = home )) +
+  geom_point(alpha = .5) +
+  labs(title = "Figure 5: Relationship between points_for and weekly_attendance",
+       x = "points_for",
+       y = "weekly_attendance")
+
+
+```
+
+```{r Figure 6}
+
+## Finds the average og home attendance by team
+average_attendance2 <- merged_data %>%
+  group_by(team_name) %>%
+  summarise(home1 = mean(home))
+  ## arranges data from greatest to lowest
+average_attendance2 <- average_attendance2 %>%
+  arrange(-home1)
+
+## averages of wins per team from 2000-2019
+average_attendance4 <- merged_data %>%
+  group_by(team_name) %>%
+  summarise( win1= mean(wins))
+
+merged_data1<- average_attendance2 %>% inner_join(average_attendance4, by = c("team_name"))
+
+ggplot(merged_data1, aes(y =  reorder(team_name, home1), x =home1, fill = win1)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = win1) , vjust = .5, hjust = -.3) +
+  scale_fill_gradient(limits = c(6, 12), low = "blue", high = "red") +
+  labs(title = "Figure 6 : Relationship Between Teams Attendance Rates and their Winning Performance",
+       x = "Team",
+       y = "Attendance") +
+ scale_x_continuous(labels = scales::comma_format()) 
+
+
+```
+
+As analyzed, the data showed that teams in big cities like New York, Dallas, and Washington D.C. consistently draw the largest crowds for their home games. What's interesting is that the main factor of attendance is the market size rather than the team's on-field performance. While a winning streak may slightly increase attendance, the most crucial factor is how big of a city the team plays in.
+
+## Summary
+
+We have analyzed how the outcomes of games in the NFL and team standings affect attendance at home games. We did this by taking a look at the 2 data sets, which are attendance and standings data sets, to find out how each team's standings and performance during the season affect attendance at home games. First, we cleaned out the data sets, such as handling the missing data and outliers. Then we joined the data sets together to analyze it.
+
+The overall insight that I got from this data is how well a team's performance may increase their attendance at home games. NFL teams may see like. 5000 to 12000 increase in fans at home games the whole season, which is still an improvement but only a little for a sort as big as the NFL. While looking at this, I realized that the teams at the top of attendance were teams from big cities such as New York and Dallas.
+
+This provides NFL teams with insights about how they can think of other ways to increase their fanbase by not just winning more but thinking of other new ideas and, for example, making their stadium more accessible by being more active on social media. Overall, this data showed that there was little of a correlation between how the team performed in games and the outcomes of these games that affected attendance at home games.
+
+Some of our limitations were that they could have provided other aspects that may affect NFL attendance at games, like social media, TV, and others. This could have helped us compare and see which aspect may impact attendance the most.
